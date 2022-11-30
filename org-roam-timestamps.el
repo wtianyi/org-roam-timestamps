@@ -103,12 +103,15 @@ Defaults to one hour."
 Optionally checks the minimum time interval you want between mod times
 if you supply the current MTIME."
   (org-with-wide-buffer
-   (let ((pos (if node (org-roam-node-point node) (point-min)))
-         (curr (org-roam-timestamps-decode (current-time))))
+   (let* ((pos (if node (org-roam-node-point node) (point-min)))
+          (curr (org-roam-timestamps-decode (current-time)))
+          (curr-ts (format-time-string "[%Y-%m-%d %a %H:%M]" (org-roam-timestamps-encode curr))))
      (if (and org-roam-timestamps-remember-timestamps mtime)
          (when (> (org-roam-timestamps-subtract curr mtime t) org-roam-timestamps-minimum-gap)
-           (org-entry-put pos "mtime" (concat (org-roam-timestamps-decode (current-time)) " " mtime)))
-       (org-entry-put pos "mtime" curr)))))
+           (org-entry-put pos "mtime" (concat curr " " mtime))
+           (org-entry-put pos "mtimestamp" curr-ts))
+       (org-entry-put pos "mtime" curr)
+       (org-entry-put pos "mtimestamp" curr-ts)))))
 
 (defun org-roam-timestamps--get-mtime (node)
   "Get the mtime of the org-roam node NODE."
@@ -136,9 +139,14 @@ ctime."
            ((toplevel (= 0 (or level 0)))
             (filename (file-name-base file))
             (index (string-match "^[0-9]\\{14\\}" filename))
-            (timestamp (substring filename index (+ index 14))))
-           (org-entry-put pos "ctime" timestamp)
-         (org-entry-put pos "ctime" (car(last (split-string (org-entry-get pos "mtime"))))))))))
+            (timestamp (substring filename index (+ index 14)))
+            (ts (format-time-string "[%Y-%m-%d %a %H:%M]" (org-roam-timestamps-encode timestamp))))
+           (progn (org-entry-put pos "ctime" timestamp)
+                  (org-entry-put pos "ctimestamp" ts))
+         (let* ((mtime (car(last (split-string (org-entry-get pos "mtime")))))
+                (mts (format-time-string "[%Y-%m-%d %a %H:%M]" (org-roam-timestamps-encode mtime))))
+           (org-entry-put pos "ctime" mtime)
+           (org-entry-put pos "ctimestamp" mts)))))))
 
 (defun org-roam-timestamps--get-parent-file-id (file)
   "Find the top level node-id of FILE."
